@@ -27,9 +27,9 @@ const fs = require("fs");
 const config = require("./config.json");
 
 
-// =======================
-// SERVEUR HTTP RENDER
-// =======================
+// =====================
+// RENDER WEB SERVER
+// =====================
 
 const app = express();
 
@@ -37,86 +37,88 @@ const PORT = process.env.PORT || 3000;
 
 
 app.get("/", (req,res)=>{
-
-    res.status(200).send(
-        "🛡️ Sentinel-01 opérationnel"
-    );
-
+    res.send("🛡️ Sentinel-01 Online");
 });
 
 
 app.get("/health",(req,res)=>{
-
-    res.status(200).json({
-
-        status:"online",
-
-        bot: client.user 
-        ? client.user.tag 
-        : "starting"
-
+    res.json({
+        status:"online"
     });
-
 });
 
 
 app.listen(PORT,()=>{
-
-    console.log(
-        `Serveur HTTP actif sur le port ${PORT}`
-    );
-
+    console.log(`HTTP actif sur ${PORT}`);
 });
 
 
 
 
-// =======================
-// BOT DISCORD
-// =======================
-
+// =====================
+// DISCORD CLIENT
+// =====================
 
 const client = new Client({
 
     intents:[
-
         GatewayIntentBits.Guilds,
-
         GatewayIntentBits.GuildVoiceStates
-
     ]
 
 });
 
 
 
+let voiceConnection = null;
 let alreadyPlayed = false;
 
-let voiceConnection = null;
+
+
+// =====================
+// READY
+// =====================
+
+
+client.once("ready", async()=>{
+
+
+    console.log(
+        `${client.user.tag} connecté`
+    );
+
+
+    client.user.setActivity(
+        "/report | Signaler",
+        {
+            type: ActivityType.Listening
+        }
+    );
+
+
+    await connectVoice();
+
+
+});
 
 
 
 
-
-// =======================
-// CONNEXION VOCALE AUTO
-// =======================
-
-
-async function joinPermanentVoice(){
+// =====================
+// JOIN VOCAL PERMANENT
+// =====================
 
 
-    const guild = client.guilds.cache.first();
+async function connectVoice(){
+
+
+    const guild =
+    client.guilds.cache.first();
 
 
     if(!guild){
-
-        console.log(
-            "Aucun serveur trouvé"
-        );
-
+        console.log("Serveur introuvable");
         return;
-
     }
 
 
@@ -127,15 +129,13 @@ async function joinPermanentVoice(){
     );
 
 
-
     if(!channel){
 
         console.log(
-            "Salon vocal introuvable"
+            "Vocal introuvable"
         );
 
         return;
-
     }
 
 
@@ -150,9 +150,9 @@ async function joinPermanentVoice(){
         adapterCreator:
         guild.voiceAdapterCreator,
 
-        selfDeaf:false,
+        selfMute:false,
 
-        selfMute:false
+        selfDeaf:false
 
     });
 
@@ -161,24 +161,23 @@ async function joinPermanentVoice(){
     voiceConnection.on(
         VoiceConnectionStatus.Ready,
         ()=>{
-
             console.log(
-                "🛡️ Sentinel connecté au vocal"
+                "🛡️ Sentinel dans le vocal"
             );
-
         }
     );
 
 
 
     voiceConnection.on(
-        "error",
-        error=>{
+        VoiceConnectionStatus.Disconnected,
+        ()=>{
 
             console.log(
-                "Erreur vocal :",
-                error
+                "Vocal déconnecté, reconnexion..."
             );
+
+            setTimeout(connectVoice,5000);
 
         }
     );
@@ -189,61 +188,13 @@ async function joinPermanentVoice(){
 
 
 
-
-
-
-client.once(
-"ready",
-async ()=>{
-
-
-    console.log(
-        `${client.user.tag} connecté`
-    );
-
-
-
-    client.user.setActivity(
-
-        "/report | Signaler un problème",
-
-        {
-
-            type:ActivityType.Listening
-
-        }
-
-    );
-
-
-
-    await joinPermanentVoice();
-
-
-
-    console.log(
-        "Surveillance du vocal activée"
-    );
-
-
-});
-
-
-
-
-
-
-
-
-
-// =======================
-// SURVEILLANCE ARRIVÉES
-// =======================
+// =====================
+// SURVEILLANCE VOCAL
+// =====================
 
 
 client.on(
 "voiceStateUpdate",
-
 async(oldState,newState)=>{
 
 
@@ -251,69 +202,51 @@ async(oldState,newState)=>{
     newState.channel;
 
 
-
     if(!channel)
-    return;
+        return;
 
 
 
     if(
         channel.id !== config.voiceChannelId
     )
-    return;
+        return;
 
 
 
 
     const members =
     channel.members.filter(
-        member=>!member.user.bot
+        m=>!m.user.bot
     );
-
 
 
 
     console.log(
-
-        `${channel.name} : ${members.size} membre(s)`
-
+        `Membres vocal : ${members.size}`
     );
-
 
 
 
 
     if(
-
-        members.size === 1
-
-        &&
-
+        members.size === 1 &&
         !alreadyPlayed
-
     ){
 
+        alreadyPlayed=true;
 
-        alreadyPlayed = true;
-
-
-        await playReminder(channel);
-
+        playReminder();
 
     }
 
 
 
+    if(members.size===0){
 
-
-    if(members.size === 0){
-
-
-        alreadyPlayed = false;
-
+        alreadyPlayed=false;
 
     }
-
 
 
 });
@@ -321,22 +254,23 @@ async(oldState,newState)=>{
 
 
 
+// =====================
+// AUDIO
+// =====================
 
 
+function playReminder(){
 
 
+    if(!voiceConnection){
 
-// =======================
-// LECTURE RAPPEL
-// =======================
+        console.log(
+            "Pas connecté"
+        );
 
+        return;
 
-async function playReminder(channel){
-
-
-    console.log(
-        "Lecture rappel..."
-    );
+    }
 
 
 
@@ -345,14 +279,12 @@ async function playReminder(channel){
     ){
 
         console.log(
-            "rappel.mp3 introuvable"
+            "rappel.mp3 absent"
         );
 
         return;
 
     }
-
-
 
 
 
@@ -361,78 +293,40 @@ async function playReminder(channel){
 
 
 
-    if(!voiceConnection){
-
-        console.log(
-            "Pas de connexion vocale"
-        );
-
-        return;
-
-    }
-
-
-
-
-    voiceConnection.subscribe(player);
-
-
-
-
-
-
-    const ffmpegProcess =
-    spawn(
-
-        ffmpeg,
-
-        [
-
-            "-i",
-
-            "./rappel.mp3",
-
-
-            "-f",
-
-            "s16le",
-
-
-            "-ar",
-
-            "48000",
-
-
-            "-ac",
-
-            "2",
-
-
-            "pipe:1"
-
-        ]
-
+    voiceConnection.subscribe(
+        player
     );
 
 
 
+    const ffmpegProcess =
+    spawn(ffmpeg,[
+
+        "-i",
+        "./rappel.mp3",
+
+        "-f",
+        "s16le",
+
+        "-ar",
+        "48000",
+
+        "-ac",
+        "2",
+
+        "pipe:1"
+
+    ]);
 
 
 
     const resource =
     createAudioResource(
-
         ffmpegProcess.stdout,
-
         {
-
             inputType:StreamType.Raw
-
         }
-
     );
-
-
 
 
 
@@ -440,65 +334,37 @@ async function playReminder(channel){
 
 
 
-
-
-
     player.on(
-
         AudioPlayerStatus.Playing,
-
         ()=>{
-
             console.log(
-                "🔊 Rappel en lecture"
+                "🔊 Rappel lancé"
             );
-
         }
-
     );
 
 
-
-
-
     player.on(
-
         AudioPlayerStatus.Idle,
-
         ()=>{
-
             console.log(
                 "✅ Rappel terminé"
             );
-
         }
-
     );
-
-
-
 
 
     player.on(
-
         "error",
-
-        error=>{
-
+        e=>{
             console.log(
-                "Erreur audio :",
-                error
+                "Erreur audio",
+                e
             );
-
         }
-
     );
 
-
 }
-
-
-
 
 
 
