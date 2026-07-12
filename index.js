@@ -22,7 +22,7 @@ const {
     getVoiceConnection
 } = require("@discordjs/voice");
 
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3");
 const path = require("path");
 
 
@@ -84,94 +84,65 @@ client.voiceActivity = new Map();
 // DATABASE SQLITE
 // ======================================================
 
-const db = new sqlite3.Database(
-    path.join(__dirname, "sentinel.db"),
-    (err) => {
-
-        if (err) {
-            console.error(
-                "Erreur SQLite :",
-                err
-            );
-        } else {
-
-            console.log(
-                "✅ Base SQLite connectée"
-            );
-
-        }
-
-    }
+const db = new Database(
+    path.join(__dirname, "sentinel.db")
 );
 
+console.log(
+    "✅ Base SQLite connectée"
+);
 
 // Création des tables
 
-db.serialize(() => {
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS voice_logs (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    user_id TEXT,
+
+    username TEXT,
+
+    channel_id TEXT,
+
+    channel_name TEXT,
+
+    joined_at INTEGER,
+
+    left_at INTEGER,
+
+    duration INTEGER
+
+);
 
 
-    db.run(`
+CREATE TABLE IF NOT EXISTS reports (
 
-        CREATE TABLE IF NOT EXISTS voice_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
 
-            user_id TEXT,
+    reporter_id TEXT,
 
-            username TEXT,
+    reason TEXT,
 
-            channel_id TEXT,
+    description TEXT,
 
-            channel_name TEXT,
+    created_at INTEGER
 
-            joined_at INTEGER,
-
-            left_at INTEGER,
-
-            duration INTEGER
-
-        )
-
-    `);
+);
 
 
+CREATE TABLE IF NOT EXISTS trust_score (
 
-    db.run(`
+    user_id TEXT PRIMARY KEY,
 
-        CREATE TABLE IF NOT EXISTS reports (
+    score INTEGER DEFAULT 100
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+);
 
-            user_id TEXT,
-
-            reporter_id TEXT,
-
-            reason TEXT,
-
-            description TEXT,
-
-            created_at INTEGER
-
-        )
-
-    `);
-
-
-
-    db.run(`
-
-        CREATE TABLE IF NOT EXISTS trust_score (
-
-            user_id TEXT PRIMARY KEY,
-
-            score INTEGER DEFAULT 100
-
-        )
-
-    `);
-
-
-});
+`);
 
 
 // ======================================================
