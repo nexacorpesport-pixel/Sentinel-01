@@ -1473,127 +1473,31 @@ ${score}/100
 // SYSTEME DE SCORE DE CONFIANCE AUTOMATIQUE
 // ======================================================
 
-
-// Modifier le score d'un utilisateur
-
 function updateTrustScore(userId, amount) {
 
+    const row = db.prepare(`
+        SELECT score
+        FROM trust_score
+        WHERE user_id = ?
+    `).get(userId);
 
-    return new Promise((resolve)=>{
+    let current = row ? row.score : 100;
 
+    let newScore = current + amount;
 
-        db.get(
+    // Limites du score
+    if (newScore > 100) newScore = 100;
+    if (newScore < 0) newScore = 0;
 
-            `
+    db.prepare(`
+        INSERT INTO trust_score (user_id, score)
+        VALUES (?, ?)
+        ON CONFLICT(user_id)
+        DO UPDATE SET score = excluded.score
+    `).run(userId, newScore);
 
-            SELECT score
-
-            FROM trust_score
-
-            WHERE user_id = ?
-
-            `,
-
-            [
-
-                userId
-
-            ],
-
-
-            (err,row)=>{
-
-
-                let current = 100;
-
-
-
-                if(row) {
-
-                    current =
-                    row.score;
-
-                }
-
-
-
-                let newScore =
-                current + amount;
-
-
-
-                // Limites du score
-
-                if(newScore > 100)
-                    newScore = 100;
-
-
-                if(newScore < 0)
-                    newScore = 0;
-
-
-
-
-                db.run(
-
-                    `
-
-                    INSERT INTO trust_score
-
-                    (
-
-                        user_id,
-
-                        score
-
-                    )
-
-                    VALUES (?, ?)
-
-                    ON CONFLICT(user_id)
-
-                    DO UPDATE SET score = ?
-
-                    `,
-
-                    [
-
-                        userId,
-
-                        newScore,
-
-                        newScore
-
-                    ],
-
-
-                    ()=>{
-
-
-                        resolve(
-                            newScore
-                        );
-
-
-                    }
-
-                );
-
-
-            }
-
-
-        );
-
-
-    });
-
-
+    return newScore;
 }
-
-
-
-
 // ======================================================
 // MALUS AUTOMATIQUE
 // ======================================================
