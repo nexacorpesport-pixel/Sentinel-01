@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
+    "@discordjs/rest": "^2.4.0",
     "@discordjs/voice": "^0.19.2",
+    "discord-api-types": "^0.37.120",
     "discord.js": "^14.26.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
