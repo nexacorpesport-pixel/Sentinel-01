@@ -33,7 +33,7 @@ const config = require("./config.json");
 
 
 // =====================
-// WEB SERVER RENDER
+// WEB SERVER
 // =====================
 
 const app = express();
@@ -41,7 +41,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 
-app.get("/", (req,res)=>{
+app.get("/",(req,res)=>{
     res.send("🛡️ Sentinel-01 Online");
 });
 
@@ -54,18 +54,15 @@ app.get("/health",(req,res)=>{
 
 
 app.listen(PORT,()=>{
-
     console.log(
         `HTTP actif sur ${PORT}`
     );
-
 });
 
 
 
-
 // =====================
-// DISCORD CLIENT
+// DISCORD
 // =====================
 
 const client = new Client({
@@ -90,10 +87,13 @@ const client = new Client({
 
 let voiceConnection = null;
 
+let audioPlayer = null;
+
 let alreadyPlayed = false;
 
 let lastVoiceUsers = [];
 
+let reconnecting = false;
 
 
 
@@ -101,7 +101,9 @@ let lastVoiceUsers = [];
 // READY
 // =====================
 
-client.once("ready", async()=>{
+client.once(
+"ready",
+async()=>{
 
 
     console.log(
@@ -109,20 +111,15 @@ client.once("ready", async()=>{
     );
 
 
-
     client.user.setActivity(
-
         "/report | Signaler",
-
         {
             type:ActivityType.Listening
         }
-
     );
 
 
-
-    await connectVoice();
+    connectVoice();
 
 
 });
@@ -131,111 +128,148 @@ client.once("ready", async()=>{
 
 
 // =====================
-// CONNEXION VOCAL
+// VOCAL CONNECT
 // =====================
 
 async function connectVoice(){
 
 
-    const guild =
-    client.guilds.cache.first();
-
-
-
-    if(!guild){
-
-        console.log(
-            "Serveur introuvable"
-        );
-
+    if(reconnecting)
         return;
 
-    }
+
+    reconnecting=true;
+
+
+    try{
+
+
+        const guild =
+        client.guilds.cache.first();
 
 
 
+        if(!guild){
 
-    const channel =
-    guild.channels.cache.get(
-        config.voiceChannelId
-    );
+            reconnecting=false;
+            return;
+
+        }
 
 
 
-    if(!channel){
-
-        console.log(
-            "Salon vocal introuvable"
+        const channel =
+        guild.channels.cache.get(
+            config.voiceChannelId
         );
 
-        return;
-
-    }
 
 
+        if(!channel){
 
+            console.log(
+                "Salon vocal introuvable"
+            );
 
-    voiceConnection =
-    joinVoiceChannel({
+            reconnecting=false;
+            return;
 
-        channelId:channel.id,
-
-        guildId:guild.id,
-
-        adapterCreator:
-        guild.voiceAdapterCreator,
-
-        selfMute:false,
-
-        selfDeaf:false
-
-    });
+        }
 
 
 
-    voiceConnection.on(
+        voiceConnection =
+        joinVoiceChannel({
 
+            channelId:channel.id,
+
+            guildId:guild.id,
+
+            adapterCreator:
+            guild.voiceAdapterCreator,
+
+            selfMute:false,
+
+            selfDeaf:true,
+
+            debug:true
+
+        });
+
+
+
+        voiceConnection.on(
+        "error",
+        error=>{
+
+            console.log(
+                "Erreur vocal:",
+                error.message
+            );
+
+        });
+
+
+
+        voiceConnection.on(
         VoiceConnectionStatus.Ready,
-
         ()=>{
 
             console.log(
                 "🛡️ Sentinel connecté au vocal"
             );
 
-        }
+            reconnecting=false;
 
-    );
+        });
 
 
 
-    voiceConnection.on(
-
+        voiceConnection.on(
         VoiceConnectionStatus.Disconnected,
-
         ()=>{
 
-
             console.log(
-                "⚠️ Déconnexion vocal..."
+                "⚠️ Vocal déconnecté"
             );
+
+
+            voiceConnection=null;
 
 
             setTimeout(
-
                 connectVoice,
-
                 5000
-
             );
 
+        });
 
-        }
 
-    );
+
+    }catch(error){
+
+
+        console.log(
+            "Erreur connexion vocal:",
+            error.message
+        );
+
+
+        reconnecting=false;
+
+
+        setTimeout(
+            connectVoice,
+            10000
+        );
+
+    }
 
 
 }
+
+
+
 // =====================
 // SURVEILLANCE VOCAL
 // =====================
@@ -270,7 +304,6 @@ async(oldState,newState)=>{
         lastVoiceUsers.slice(0,20);
 
     }
-
 
 
 
@@ -341,7 +374,7 @@ function playReminder(){
     if(!voiceConnection){
 
         console.log(
-            "Pas de connexion vocale"
+            "Pas connecté au vocal"
         );
 
         return;
@@ -355,7 +388,7 @@ function playReminder(){
     ){
 
         console.log(
-            "rappel.mp3 introuvable"
+            "rappel.mp3 absent"
         );
 
         return;
@@ -364,13 +397,29 @@ function playReminder(){
 
 
 
-    const player =
-    createAudioPlayer();
+    if(!audioPlayer){
+
+        audioPlayer =
+        createAudioPlayer();
+
+
+        audioPlayer.on(
+        "error",
+        error=>{
+
+            console.log(
+                "Erreur audio:",
+                error.message
+            );
+
+        });
+
+    }
 
 
 
     voiceConnection.subscribe(
-        player
+        audioPlayer
     );
 
 
@@ -396,6 +445,19 @@ function playReminder(){
 
 
 
+    ffmpegProcess.on(
+    "error",
+    error=>{
+
+        console.log(
+            "Erreur FFmpeg:",
+            error.message
+        );
+
+    });
+
+
+
     const resource =
     createAudioResource(
 
@@ -409,60 +471,36 @@ function playReminder(){
 
 
 
-    player.play(resource);
-
-
-
-    player.on(
-
-        AudioPlayerStatus.Playing,
-
-        ()=>{
-
-            console.log(
-                "🔊 Rappel lancé"
-            );
-
-        }
-
+    audioPlayer.play(
+        resource
     );
 
 
 
-    player.on(
+    audioPlayer.on(
+    AudioPlayerStatus.Playing,
+    ()=>{
 
-        AudioPlayerStatus.Idle,
+        console.log(
+            "🔊 Rappel lancé"
+        );
 
-        ()=>{
-
-            console.log(
-                "✅ Rappel terminé"
-            );
-
-        }
-
-    );
+    });
 
 
 
-    player.on(
+    audioPlayer.on(
+    AudioPlayerStatus.Idle,
+    ()=>{
 
-        "error",
+        console.log(
+            "✅ Rappel terminé"
+        );
 
-        error=>{
-
-            console.log(
-                "Erreur audio :",
-                error
-            );
-
-        }
-
-    );
+    });
 
 
 }
-
 
 
 
@@ -471,19 +509,13 @@ function playReminder(){
 // =====================
 
 client.on(
-
 "interactionCreate",
-
 async interaction=>{
 
 
+    // Commande /report
 
-    // Ouverture du formulaire
-
-    if(
-        interaction.isChatInputCommand()
-    ){
-
+    if(interaction.isChatInputCommand()){
 
 
         if(
@@ -504,7 +536,6 @@ async interaction=>{
 
 
 
-
             const userInput =
             new TextInputBuilder()
 
@@ -520,12 +551,7 @@ async interaction=>{
                 TextInputStyle.Short
             )
 
-            .setPlaceholder(
-                "Pseudo ou ID Discord"
-            )
-
             .setRequired(true);
-
 
 
 
@@ -548,7 +574,6 @@ async interaction=>{
 
 
 
-
             const detailsInput =
             new TextInputBuilder()
 
@@ -565,7 +590,6 @@ async interaction=>{
             )
 
             .setRequired(true);
-
 
 
 
@@ -591,13 +615,12 @@ async interaction=>{
 
         }
 
-
     }
 
 
 
 
-    // Réception formulaire
+    // Réception du formulaire
 
     if(
         interaction.isModalSubmit()
@@ -608,7 +631,6 @@ async interaction=>{
             interaction.customId !== "reportModal"
         )
             return;
-
 
 
 
@@ -631,15 +653,15 @@ async interaction=>{
 
 
 
-
         const channel =
-        interaction.guild.channels.cache.get(
+        interaction.guild?.channels.cache.get(
             config.reportChannelId
         );
 
 
 
         if(!channel){
+
 
             return interaction.reply({
 
@@ -669,33 +691,28 @@ async interaction=>{
         .addFields(
 
             {
-                name:"👤 Signalé",
-
+                name:"👤 Utilisateur signalé",
                 value:user
             },
 
             {
                 name:"⚠️ Motif",
-
                 value:reason
             },
 
             {
                 name:"📝 Détails",
-
                 value:details
             },
 
             {
-                name:"📨 Auteur",
-
-                value:`${interaction.user.tag}`
+                name:"📨 Signalé par",
+                value:interaction.user.tag
             }
 
         )
 
         .setTimestamp();
-
 
 
 
@@ -712,7 +729,7 @@ async interaction=>{
         await interaction.reply({
 
             content:
-            "✅ Signalement envoyé au staff.",
+            "✅ Ton signalement a été envoyé au staff.",
 
             ephemeral:true
 
