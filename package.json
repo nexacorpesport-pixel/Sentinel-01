@@ -1,12 +1,14 @@
 {
-  "name": "discord-vocal-bot",
+  "name": "sentinel-01",
   "version": "1.0.0",
-  "description": "Bot vocal Discord",
+  "description": "Bot Discord de surveillance vocale",
   "main": "index.js",
-"scripts": {
-  "start": "node index.js",
-  "deploy": "node deploy-commands.js"
-},
+
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
+  },
+
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "^2.4.0",
@@ -19,7 +21,6 @@
     "prism-media": "^1.3.5",
     "sodium-native": "^5.1.0"
   },
-  "keywords": [],
-  "author": "",
+
   "license": "ISC"
 }
