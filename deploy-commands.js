@@ -1,9 +1,6 @@
 require("dotenv").config();
 
-const {
-    REST,
-    Routes
-} = require("discord.js");
+const { REST, Routes } = require("discord.js");
 
 
 const commands = [
@@ -18,26 +15,32 @@ const commands = [
 
 
 const rest = new REST({
-
     version: "10"
-
 }).setToken(
     process.env.DISCORD_TOKEN
 );
 
 
 
-async function deployCommands(){
+async function deploy(){
+
 
     try {
 
-        console.log("Déploiement des commandes slash...");
+
+        console.log(
+            "Déploiement de la commande slash..."
+        );
 
 
         await rest.put(
 
-            Routes.applicationCommands(
-                process.env.CLIENT_ID
+            Routes.applicationGuildCommands(
+
+                process.env.CLIENT_ID,
+
+                process.env.GUILD_ID
+
             ),
 
             {
@@ -48,18 +51,20 @@ async function deployCommands(){
 
 
         console.log(
-            "Commandes slash installées avec succès !"
+            "Commande /report installée !"
         );
 
 
-    } catch(error){
+    }
+
+    catch(error){
 
         console.error(error);
 
     }
 
+
 }
 
 
-
-deployCommands();
+deploy();
