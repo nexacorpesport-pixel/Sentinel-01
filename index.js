@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const express = require("express");
+
 const {
     Client,
     GatewayIntentBits,
@@ -19,6 +21,48 @@ const ffmpeg = require("ffmpeg-static");
 const fs = require("fs");
 
 const config = require("./config.json");
+
+
+// =======================
+// SERVEUR HTTP RENDER
+// =======================
+
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+
+app.get("/", (req, res) => {
+
+    res.status(200).send(
+        "🛡️ Sentinel-01 opérationnel"
+    );
+
+});
+
+
+app.get("/health", (req, res) => {
+
+    res.status(200).json({
+        status: "online",
+        bot: client.user ? client.user.tag : "starting"
+    });
+
+});
+
+
+app.listen(PORT, () => {
+
+    console.log(
+        `Serveur HTTP actif sur le port ${PORT}`
+    );
+
+});
+
+
+// =======================
+// BOT DISCORD
+// =======================
 
 
 const client = new Client({
@@ -46,11 +90,13 @@ client.once("ready", () => {
         }
     );
 
+
     console.log(
         "Surveillance du vocal activée"
     );
 
 });
+
 
 
 
@@ -84,8 +130,6 @@ async (oldState, newState) => {
 
 
 
-    // Premier membre qui arrive
-
     if (
         members.size === 1 &&
         !alreadyPlayed
@@ -100,8 +144,6 @@ async (oldState, newState) => {
 
 
 
-    // Vocal vide = reset
-
     if (members.size === 0) {
 
         alreadyPlayed = false;
@@ -109,8 +151,9 @@ async (oldState, newState) => {
     }
 
 
-
 });
+
+
 
 
 
@@ -141,6 +184,7 @@ async function playReminder(channel) {
 
 
 
+
     connection.on(
         VoiceConnectionStatus.Ready,
         () => {
@@ -154,11 +198,14 @@ async function playReminder(channel) {
 
 
 
+
+
     const player = createAudioPlayer();
 
 
-
     connection.subscribe(player);
+
+
 
 
 
@@ -171,6 +218,7 @@ async function playReminder(channel) {
         return;
 
     }
+
 
 
 
@@ -196,6 +244,8 @@ async function playReminder(channel) {
 
 
 
+
+
     const resource =
     createAudioResource(
         ffmpegProcess.stdout
@@ -203,7 +253,9 @@ async function playReminder(channel) {
 
 
 
+
     player.play(resource);
+
 
 
 
@@ -220,6 +272,7 @@ async function playReminder(channel) {
 
 
 
+
     player.on(
         AudioPlayerStatus.Idle,
         () => {
@@ -230,6 +283,7 @@ async function playReminder(channel) {
 
         }
     );
+
 
 
 
@@ -247,6 +301,8 @@ async function playReminder(channel) {
 
 
 }
+
+
 
 
 
