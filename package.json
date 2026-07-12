@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "Bot vocal Discord",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+"scripts": {
+  "start": "node index.js",
+  "deploy": "node deploy-commands.js"
+}
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "^2.4.0",
