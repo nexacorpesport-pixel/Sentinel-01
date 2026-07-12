@@ -22,11 +22,9 @@ const rest = new REST({
 
 
 
-async function deploy(){
-
+async function deploy() {
 
     try {
-
 
         console.log(
             "Déploiement de la commande slash..."
@@ -51,18 +49,18 @@ async function deploy(){
 
 
         console.log(
-            "Commande /report installée !"
+            "✅ Commande /report installée !"
         );
 
 
+    } catch (error) {
+
+        console.error(
+            "Erreur déploiement :",
+            error
+        );
+
     }
-
-    catch(error){
-
-        console.error(error);
-
-    }
-
 
 }
 
