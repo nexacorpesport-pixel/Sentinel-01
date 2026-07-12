@@ -5,7 +5,12 @@ const express = require("express");
 const {
     Client,
     GatewayIntentBits,
-    ActivityType
+    ActivityType,
+    EmbedBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ActionRowBuilder
 } = require("discord.js");
 
 
@@ -28,7 +33,7 @@ const config = require("./config.json");
 
 
 // =====================
-// RENDER WEB SERVER
+// WEB SERVER RENDER
 // =====================
 
 const app = express();
@@ -49,7 +54,11 @@ app.get("/health",(req,res)=>{
 
 
 app.listen(PORT,()=>{
-    console.log(`HTTP actif sur ${PORT}`);
+
+    console.log(
+        `HTTP actif sur ${PORT}`
+    );
+
 });
 
 
@@ -62,23 +71,35 @@ app.listen(PORT,()=>{
 const client = new Client({
 
     intents:[
+
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildVoiceStates
+
+        GatewayIntentBits.GuildVoiceStates,
+
+        GatewayIntentBits.GuildMembers
+
     ]
 
 });
 
 
 
+// =====================
+// VARIABLES
+// =====================
+
 let voiceConnection = null;
+
 let alreadyPlayed = false;
+
+let lastVoiceUsers = [];
+
 
 
 
 // =====================
 // READY
 // =====================
-
 
 client.once("ready", async()=>{
 
@@ -88,12 +109,17 @@ client.once("ready", async()=>{
     );
 
 
+
     client.user.setActivity(
+
         "/report | Signaler",
+
         {
-            type: ActivityType.Listening
+            type:ActivityType.Listening
         }
+
     );
+
 
 
     await connectVoice();
@@ -105,9 +131,8 @@ client.once("ready", async()=>{
 
 
 // =====================
-// JOIN VOCAL PERMANENT
+// CONNEXION VOCAL
 // =====================
-
 
 async function connectVoice(){
 
@@ -116,10 +141,17 @@ async function connectVoice(){
     client.guilds.cache.first();
 
 
+
     if(!guild){
-        console.log("Serveur introuvable");
+
+        console.log(
+            "Serveur introuvable"
+        );
+
         return;
+
     }
+
 
 
 
@@ -129,14 +161,17 @@ async function connectVoice(){
     );
 
 
+
     if(!channel){
 
         console.log(
-            "Vocal introuvable"
+            "Salon vocal introuvable"
         );
 
         return;
+
     }
+
 
 
 
@@ -159,47 +194,89 @@ async function connectVoice(){
 
 
     voiceConnection.on(
+
         VoiceConnectionStatus.Ready,
+
         ()=>{
+
             console.log(
-                "🛡️ Sentinel dans le vocal"
+                "🛡️ Sentinel connecté au vocal"
             );
+
         }
+
     );
 
 
 
     voiceConnection.on(
+
         VoiceConnectionStatus.Disconnected,
+
         ()=>{
 
+
             console.log(
-                "Vocal déconnecté, reconnexion..."
+                "⚠️ Déconnexion vocal..."
             );
 
-            setTimeout(connectVoice,5000);
+
+            setTimeout(
+
+                connectVoice,
+
+                5000
+
+            );
+
 
         }
+
     );
 
 
 }
-
-
-
-
 // =====================
 // SURVEILLANCE VOCAL
 // =====================
-
 
 client.on(
 "voiceStateUpdate",
 async(oldState,newState)=>{
 
 
+    const member = newState.member;
+
+
+
+    if(
+        member &&
+        !member.user.bot &&
+        newState.channel
+    ){
+
+        lastVoiceUsers.unshift({
+
+            id:member.id,
+
+            name:member.user.tag,
+
+            time:Date.now()
+
+        });
+
+
+        lastVoiceUsers =
+        lastVoiceUsers.slice(0,20);
+
+    }
+
+
+
+
     const channel =
     newState.channel;
+
 
 
     if(!channel)
@@ -214,7 +291,6 @@ async(oldState,newState)=>{
 
 
 
-
     const members =
     channel.members.filter(
         m=>!m.user.bot
@@ -223,9 +299,8 @@ async(oldState,newState)=>{
 
 
     console.log(
-        `Membres vocal : ${members.size}`
+        `👥 Vocal : ${members.size} membre(s)`
     );
-
 
 
 
@@ -242,7 +317,9 @@ async(oldState,newState)=>{
 
 
 
-    if(members.size===0){
+    if(
+        members.size === 0
+    ){
 
         alreadyPlayed=false;
 
@@ -255,9 +332,8 @@ async(oldState,newState)=>{
 
 
 // =====================
-// AUDIO
+// AUDIO RAPPEL
 // =====================
-
 
 function playReminder(){
 
@@ -265,7 +341,7 @@ function playReminder(){
     if(!voiceConnection){
 
         console.log(
-            "Pas connecté"
+            "Pas de connexion vocale"
         );
 
         return;
@@ -279,7 +355,7 @@ function playReminder(){
     ){
 
         console.log(
-            "rappel.mp3 absent"
+            "rappel.mp3 introuvable"
         );
 
         return;
@@ -322,10 +398,13 @@ function playReminder(){
 
     const resource =
     createAudioResource(
+
         ffmpegProcess.stdout,
+
         {
             inputType:StreamType.Raw
         }
+
     );
 
 
@@ -335,39 +414,322 @@ function playReminder(){
 
 
     player.on(
+
         AudioPlayerStatus.Playing,
+
         ()=>{
+
             console.log(
                 "🔊 Rappel lancé"
             );
+
         }
+
     );
 
 
+
     player.on(
+
         AudioPlayerStatus.Idle,
+
         ()=>{
+
             console.log(
                 "✅ Rappel terminé"
             );
+
         }
+
     );
+
 
 
     player.on(
+
         "error",
-        e=>{
+
+        error=>{
+
             console.log(
-                "Erreur audio",
-                e
+                "Erreur audio :",
+                error
             );
+
         }
+
     );
+
 
 }
 
 
 
+
+// =====================
+// SYSTEME REPORT MODAL
+// =====================
+
+client.on(
+
+"interactionCreate",
+
+async interaction=>{
+
+
+
+    // Ouverture du formulaire
+
+    if(
+        interaction.isChatInputCommand()
+    ){
+
+
+
+        if(
+            interaction.commandName === "report"
+        ){
+
+
+            const modal =
+            new ModalBuilder()
+
+            .setCustomId(
+                "reportModal"
+            )
+
+            .setTitle(
+                "🛡️ Sentinel - Signalement"
+            );
+
+
+
+
+            const userInput =
+            new TextInputBuilder()
+
+            .setCustomId(
+                "reportedUser"
+            )
+
+            .setLabel(
+                "Utilisateur concerné"
+            )
+
+            .setStyle(
+                TextInputStyle.Short
+            )
+
+            .setPlaceholder(
+                "Pseudo ou ID Discord"
+            )
+
+            .setRequired(true);
+
+
+
+
+            const reasonInput =
+            new TextInputBuilder()
+
+            .setCustomId(
+                "reportReason"
+            )
+
+            .setLabel(
+                "Raison du signalement"
+            )
+
+            .setStyle(
+                TextInputStyle.Short
+            )
+
+            .setRequired(true);
+
+
+
+
+            const detailsInput =
+            new TextInputBuilder()
+
+            .setCustomId(
+                "reportDetails"
+            )
+
+            .setLabel(
+                "Détails"
+            )
+
+            .setStyle(
+                TextInputStyle.Paragraph
+            )
+
+            .setRequired(true);
+
+
+
+
+            modal.addComponents(
+
+                new ActionRowBuilder()
+                .addComponents(userInput),
+
+
+                new ActionRowBuilder()
+                .addComponents(reasonInput),
+
+
+                new ActionRowBuilder()
+                .addComponents(detailsInput)
+
+            );
+
+
+
+            await interaction.showModal(modal);
+
+
+        }
+
+
+    }
+
+
+
+
+    // Réception formulaire
+
+    if(
+        interaction.isModalSubmit()
+    ){
+
+
+        if(
+            interaction.customId !== "reportModal"
+        )
+            return;
+
+
+
+
+        const user =
+        interaction.fields.getTextInputValue(
+            "reportedUser"
+        );
+
+
+        const reason =
+        interaction.fields.getTextInputValue(
+            "reportReason"
+        );
+
+
+        const details =
+        interaction.fields.getTextInputValue(
+            "reportDetails"
+        );
+
+
+
+
+        const channel =
+        interaction.guild.channels.cache.get(
+            config.reportChannelId
+        );
+
+
+
+        if(!channel){
+
+            return interaction.reply({
+
+                content:
+                "❌ Salon de rapport introuvable.",
+
+                ephemeral:true
+
+            });
+
+        }
+
+
+
+
+        const embed =
+        new EmbedBuilder()
+
+        .setTitle(
+            "🚨 Nouveau signalement Sentinel"
+        )
+
+        .setColor(
+            0xff0000
+        )
+
+        .addFields(
+
+            {
+                name:"👤 Signalé",
+
+                value:user
+            },
+
+            {
+                name:"⚠️ Motif",
+
+                value:reason
+            },
+
+            {
+                name:"📝 Détails",
+
+                value:details
+            },
+
+            {
+                name:"📨 Auteur",
+
+                value:`${interaction.user.tag}`
+            }
+
+        )
+
+        .setTimestamp();
+
+
+
+
+        await channel.send({
+
+            embeds:[
+                embed
+            ]
+
+        });
+
+
+
+        await interaction.reply({
+
+            content:
+            "✅ Signalement envoyé au staff.",
+
+            ephemeral:true
+
+        });
+
+
+    }
+
+
+});
+
+
+
+
+// =====================
+// LOGIN
+// =====================
 
 client.login(
     process.env.DISCORD_TOKEN
