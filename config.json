@@ -1,1 +1,20 @@
-
+{
+  "token": "TON_TOKEN_DISCORD_ICI",
+  "mongoURI": "TON_LIEN_MONGODB_ATLAS_ICI",
+  "guildId": "ID_DE_TON_SERVEUR",
+  "roles": {
+    "staff": ["1532015045800628244", "1532015039806963763"],
+    "admin": ["1532015045800628244", "1532015039806963763"]
+  },
+  "categories": {
+    "ranked": "1540458925848006677",
+    "tickets": "1542296101951119410"
+  },
+  "channels": {
+    "rankedInfo": "1540458971142426694",
+    "rankedMatchmaking": "1540458998027911279",
+    "leaderboard": "1542295896492998707",
+    "logsRanked": "1542296204480876654",
+    "supportTickets": "1540459340010491945"
+  }
+}
