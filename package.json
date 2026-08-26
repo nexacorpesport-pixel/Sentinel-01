@@ -1,0 +1,17 @@
+{
+  "name": "bot-ranked-discord",
+  "version": "1.0.0",
+  "description": "Bot Discord Ranked 1v1 avec MongoDB et Express",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
